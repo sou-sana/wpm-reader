@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>WPM Reader</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #38bdf8;
+      margin-bottom: 16px;
+    }
+
+    /* ── Textarea ── */
+    .textarea-label {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 160px;
+      background: #1e293b;
+      color: #f1f5f9;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      resize: vertical;
+      outline: none;
+      caret-color: #38bdf8;
+      margin-bottom: 16px;
+    }
+
+    textarea:focus { border-color: #38bdf8; }
+    textarea::placeholder { color: #475569; }
+
+    /* ── Stats ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .stat-card {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 12px 8px;
+      text-align: center;
+      border: 1px solid #334155;
+    }
+
+    .stat-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #94a3b8;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #f8fafc;
+      line-height: 1;
+    }
+
+    .stat-unit {
+      font-size: 0.6rem;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    /* ── Timer ── */
+    .timer-display {
+      background: #1e293b;
+      border-radius: 14px;
+      padding: 16px;
+      text-align: center;
+      margin-bottom: 16px;
+      border: 1px solid #334155;
+    }
+
+    .timer-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+
+    .timer-value {
+      font-size: 3rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: #fbbf24;
+      letter-spacing: 0.04em;
+    }
+
+    .timer-value.running { color: #4ade80; }
+
+    /* ── WPM Buttons ── */
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    .btn:active { transform: scale(0.96); opacity: 0.85; }
+
+    .btn-start  { background: #22c55e; color: #052e16; }
+    .btn-stop   { background: #ef4444; color: #fff; }
+    .btn-reset  { background: #334155; color: #cbd5e1; grid-column: span 2; }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ── Result Banner ── */
+    .result-banner {
+      display: none;
+      background: linear-gradient(135deg, #1e3a5f, #0f172a);
+      border: 2px solid #38bdf8;
+      border-radius: 14px;
+      padding: 18px;
+      text-align: center;
+      margin-bottom: 16px;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .result-banner.visible { display: block; }
+
+    .result-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+
+    .result-wpm {
+      font-size: 3.5rem;
+      font-weight: 800;
+      color: #38bdf8;
+      line-height: 1;
+    }
+
+    .result-sub { font-size: 0.75rem; color: #64748b; margin-top: 6px; }
+    .result-grade { margin-top: 8px; font-size: 1rem; font-weight: 600; }
+
+    /* ── Divider ── */
+    .section-divider {
+      border: none;
+      border-top: 1px solid #1e293b;
+      margin: 20px 0;
+    }
+
+    /* ── TTS Section ── */
+    .tts-section {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .tts-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #94a3b8;
+      margin-bottom: 12px;
+    }
+
+    .tts-controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .btn-tts-play  { background: #7c3aed; color: #fff; }
+    .btn-tts-pause { background: #0891b2; color: #fff; }
+    .btn-tts-stop  { background: #475569; color: #cbd5e1; }
+
+    .tts-slider-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .tts-slider-group label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.65rem;
+      color: #94a3b8;
+      margin-bottom: 4px;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: #334155;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #7c3aed;
+      cursor: pointer;
+    }
+
+    .tts-voice-select {
+      width: 100%;
+      background: #0f172a;
+      color: #f1f5f9;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 0.8rem;
+      outline: none;
+      margin-bottom: 10px;
+    }
+
+    .tts-progress-bar {
+      width: 100%;
+      height: 6px;
+      background: #334155;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .tts-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #7c3aed, #38bdf8);
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .tts-word-highlight {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 6px;
+      text-align: center;
+      min-height: 1.2em;
+    }
+
+    .tts-word-highlight span { color: #a78bfa; font-weight: 700; }
+
+    /* ── History ── */
+    .history-section { margin-top: 4px; margin-bottom: 20px; }
+
+    .history-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #94a3b8;
+      margin-bottom: 10px;
+    }
+
+    .history-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .history-item {
+      background: #1e293b;
+      border-radius: 10px;
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid #334155;
+      font-size: 0.85rem;
+    }
+
+    .history-item .hi-wpm  { font-weight: 700; color: #38bdf8; }
+    .history-item .hi-meta { color: #64748b; font-size: 0.75rem; }
+
+    .no-history {
+      color: #475569;
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 12px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📖 WPM Reader</h1>
+
+  <!-- ① 英文入力（最上部） -->
+  <div class="textarea-label">
+    <span>英文を貼り付けてください</span>
+    <span id="wpmLive" style="color:#38bdf8;font-weight:700;"></span>
+  </div>
+  <textarea
+    id="textInput"
+    placeholder="Paste your English text here…"
+    oninput="onTextChange()"
+  ></textarea>
+
+  <!-- ② 統計 -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">単語数</div>
+      <div class="stat-value" id="wordCount">0</div>
+      <div class="stat-unit">words</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">文字数</div>
+      <div class="stat-value" id="charCount">0</div>
+      <div class="stat-unit">chars</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">文数</div>
+      <div class="stat-value" id="sentenceCount">0</div>
+      <div class="stat-unit">sentences</div>
+    </div>
+  </div>
+
+  <!-- ③ タイマー -->
+  <div class="timer-display">
+    <div class="timer-label">Reading Time</div>
+    <div class="timer-value" id="timerDisplay">00:00.0</div>
+  </div>
+
+  <!-- ④ WPM操作ボタン -->
+  <div class="btn-row">
+    <button class="btn btn-start" id="btnStart" onclick="startTimer()">▶ START</button>
+    <button class="btn btn-stop"  id="btnStop"  onclick="stopTimer()" disabled>⏹ STOP</button>
+    <button class="btn btn-reset" id="btnReset" onclick="resetAll()">↺ RESET</button>
+  </div>
+
+  <!-- ⑤ 結果バナー -->
+  <div class="result-banner" id="resultBanner">
+    <div class="result-title">Your Reading Speed</div>
+    <div class="result-wpm" id="resultWpm">—</div>
+    <div class="result-sub">words per minute</div>
+    <div class="result-grade" id="resultGrade"></div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- ⑥ 読み上げ機能（下部） -->
+  <div class="tts-section">
+    <div class="tts-title">🔊 Read Aloud（英文読み上げ）</div>
+
+    <select class="tts-voice-select" id="voiceSelect">
+      <option value="">-- 音声を選択（空欄＝デフォルト）--</option>
+    </select>
+
+    <div class="tts-slider-row">
+      <div class="tts-slider-group">
+        <label>
+          <span>速度 Speed</span>
+          <span id="rateVal">1.0x</span>
+        </label>
+        <input type="range" id="ttsRate" min="0.5" max="2" step="0.1" value="1"
+          oninput="document.getElementById('rateVal').textContent = parseFloat(this.value).toFixed(1) + 'x'">
+      </div>
+      <div class="tts-slider-group">
+        <label>
+          <span>音程 Pitch</span>
+          <span id="pitchVal">1.0</span>
+        </label>
+        <input type="range" id="ttsPitch" min="0.5" max="2" step="0.1" value="1"
+          oninput="document.getElementById('pitchVal').textContent = parseFloat(this.value).toFixed(1)">
+      </div>
+    </div>
+
+    <div class="tts-controls">
+      <button class="btn btn-tts-play"  id="btnTtsPlay"  onclick="ttsPlay()">▶ 再生</button>
+      <button class="btn btn-tts-pause" id="btnTtsPause" onclick="ttsPause()" disabled>⏸ 一時停止</button>
+      <button class="btn btn-tts-stop"  id="btnTtsStop"  onclick="ttsStop()" disabled>⏹ 停止</button>
+    </div>
+
+    <div class="tts-progress-bar">
+      <div class="tts-progress-fill" id="ttsProgressFill"></div>
+    </div>
+    <div class="tts-word-highlight" id="ttsWordHighlight">テキストを貼り付けて再生ボタンを押してください</div>
+  </div>
+
+  <!-- ⑦ 履歴 -->
+  <div class="history-section">
+    <div class="history-title">📊 履歴</div>
+    <div class="history-list" id="historyList">
+      <div class="no-history">まだ記録がありません</div>
+    </div>
+  </div>
+
+<script>
+  // =============================================
+  // WPM Timer
+  // =============================================
+  let timerInterval = null;
+  let startTime     = null;
+  let elapsedMs     = 0;
+  let running       = false;
+  let history       = JSON.parse(sessionStorage.getItem('wpm_history') || '[]');
+
+  function countWords(text) {
+    const t = text.trim();
+    return t ? t.split(/\s+/).filter(w => w.length > 0).length : 0;
+  }
+
+  function countSentences(text) {
+    const m = text.match(/[.!?]+/g);
+    return m ? m.length : 0;
+  }
+
+  function formatTime(ms) {
+    const totalSec = Math.floor(ms / 100) / 10;
+    const mins = Math.floor(totalSec / 60);
+    const secs = (totalSec % 60).toFixed(1).padStart(4, '0');
+    return `${String(mins).padStart(2, '0')}:${secs}`;
+  }
+
+  function getGrade(wpm) {
+    if (wpm >= 400) return { text: '🚀 Excellent!', color: '#a78bfa' };
+    if (wpm >= 250) return { text: '⭐ Great',      color: '#4ade80' };
+    if (wpm >= 150) return { text: '👍 Good',       color: '#facc15' };
+    if (wpm >= 80)  return { text: '📚 Average',    color: '#fb923c' };
+    return              { text: '🐢 Keep going',    color: '#94a3b8' };
+  }
+
+  function onTextChange() {
+    const text  = document.getElementById('textInput').value;
+    const words = countWords(text);
+    document.getElementById('wordCount').textContent     = words;
+    document.getElementById('charCount').textContent     = text.length;
+    document.getElementById('sentenceCount').textContent = countSentences(text);
+
+    if (running && elapsedMs > 0) {
+      const liveWpm = Math.round(words / (elapsedMs / 60000));
+      document.getElementById('wpmLive').textContent = `Live: ${liveWpm} WPM`;
+    }
+  }
+
+  function startTimer() {
+    if (running) return;
+    running   = true;
+    startTime = Date.now() - elapsedMs;
+
+    timerInterval = setInterval(() => {
+      elapsedMs = Date.now() - startTime;
+      document.getElementById('timerDisplay').textContent = formatTime(elapsedMs);
+      document.getElementById('timerDisplay').className   = 'timer-value running';
+      onTextChange();
+    }, 100);
+
+    document.getElementById('btnStart').disabled = true;
+    document.getElementById('btnStop').disabled  = false;
+    document.getElementById('resultBanner').classList.remove('visible');
+  }
+
+  function stopTimer() {
+    if (!timerInterval) return;
+    clearInterval(timerInterval);
+    timerInterval = null;
+    running = false;
+
+    document.getElementById('timerDisplay').className = 'timer-value';
+    document.getElementById('btnStart').disabled = false;
+    document.getElementById('btnStop').disabled  = true;
+    document.getElementById('wpmLive').textContent = '';
+    showResult();
+  }
+
+  function showResult() {
+    const words = countWords(document.getElementById('textInput').value);
+    const mins  = elapsedMs / 60000;
+    if (words === 0 || mins === 0) return;
+
+    const wpm   = Math.round(words / mins);
+    const grade = getGrade(wpm);
+    const secs  = (elapsedMs / 1000).toFixed(1);
+
+    document.getElementById('resultWpm').textContent   = wpm;
+    document.getElementById('resultGrade').textContent = grade.text;
+    document.getElementById('resultGrade').style.color = grade.color;
+    document.getElementById('resultBanner').classList.add('visible');
+
+    const entry = { wpm, words, secs, time: new Date().toLocaleTimeString('ja-JP') };
+    history.unshift(entry);
+    if (history.length > 10) history.pop();
+    sessionStorage.setItem('wpm_history', JSON.stringify(history));
+    renderHistory();
+  }
+
+  function resetAll() {
+    clearInterval(timerInterval);
+    timerInterval = null;
+    running = false;
+    startTime = null;
+    elapsedMs = 0;
+
+    document.getElementById('timerDisplay').textContent  = '00:00.0';
+    document.getElementById('timerDisplay').className    = 'timer-value';
+    document.getElementById('textInput').value           = '';
+    document.getElementById('wordCount').textContent     = '0';
+    document.getElementById('charCount').textContent     = '0';
+    document.getElementById('sentenceCount').textContent = '0';
+    document.getElementById('wpmLive').textContent       = '';
+    document.getElementById('resultBanner').classList.remove('visible');
+    document.getElementById('btnStart').disabled = false;
+    document.getElementById('btnStop').disabled  = true;
+  }
+
+  function renderHistory() {
+    const list = document.getElementById('historyList');
+    if (history.length === 0) {
+      list.innerHTML = '<div class="no-history">まだ記録がありません</div>';
+      return;
+    }
+    list.innerHTML = history.map(h =>
+      `<div class="history-item">
+        <div>
+          <span class="hi-wpm">${h.wpm} WPM</span>
+          <div class="hi-meta">${h.words} words • ${h.secs}s</div>
+        </div>
+        <div class="hi-meta">${h.time}</div>
+      </div>`
+    ).join('');
+  }
+
+  renderHistory();
+
+  // =============================================
+  // TTS — Web Speech API
+  // =============================================
+  let ttsUtterance = null;
+  let ttsPaused    = false;
+  let ttsWords     = [];
+
+  function loadVoices() {
+    const select = document.getElementById('voiceSelect');
+    const voices = speechSynthesis.getVoices();
+    const prev   = select.value;
+
+    select.innerHTML = '<option value="">-- 音声を選択（空欄＝デフォルト）--</option>';
+    voices.forEach((v, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = `${v.name} (${v.lang})`;
+      select.appendChild(opt);
+    });
+
+    if (!prev) {
+      const engIdx = voices.findIndex(v => v.lang.startsWith('en'));
+      if (engIdx >= 0) select.value = engIdx;
+    } else {
+      select.value = prev;
+    }
+  }
+
+  if ('speechSynthesis' in window) {
+    speechSynthesis.onvoiceschanged = loadVoices;
+    loadVoices();
+  } else {
+    document.querySelector('.tts-section').innerHTML =
+      '<p style="color:#ef4444;font-size:0.85rem;">⚠️ このブラウザはWeb Speech APIに対応していません</p>';
+  }
+
+  function ttsPlay() {
+    if (!('speechSynthesis' in window)) return;
+    const text = document.getElementById('textInput').value.trim();
+    if (!text) {
+      document.getElementById('ttsWordHighlight').innerHTML = '⚠️ テキストを入力してください';
+      return;
+    }
+
+    if (ttsPaused && speechSynthesis.paused) {
+      speechSynthesis.resume();
+      ttsPaused = false;
+      document.getElementById('btnTtsPlay').disabled  = true;
+      document.getElementById('btnTtsPause').disabled = false;
+      return;
+    }
+
+    speechSynthesis.cancel();
+    ttsPaused = false;
+    ttsWords  = text.split(/\s+/).filter(w => w.length > 0);
+
+    ttsUtterance = new SpeechSynthesisUtterance(text);
+
+    const voiceSelect = document.getElementById('voiceSelect');
+    const voices      = speechSynthesis.getVoices();
+    if (voiceSelect.value !== '' && voices[voiceSelect.value]) {
+      ttsUtterance.voice = voices[voiceSelect.value];
+    }
+
+    ttsUtterance.rate  = parseFloat(document.getElementById('ttsRate').value);
+    ttsUtterance.pitch = parseFloat(document.getElementById('ttsPitch').value);
+    ttsUtterance.lang  = 'en-US';
+
+    ttsUtterance.onboundary = (e) => {
+      if (e.name !== 'word') return;
+      const before = text.substring(0, e.charIndex);
+      const idx    = before.split(/\s+/).filter(w => w.length > 0).length;
+      const progress = Math.min(100, Math.round((idx / ttsWords.length) * 100));
+      document.getElementById('ttsProgressFill').style.width = progress + '%';
+      const word = ttsWords[idx] || '';
+      document.getElementById('ttsWordHighlight').innerHTML =
+        `${idx + 1} / ${ttsWords.length} &nbsp;—&nbsp; <span>${word}</span>`;
+    };
+
+    ttsUtterance.onend = () => {
+      document.getElementById('ttsProgressFill').style.width   = '100%';
+      document.getElementById('ttsWordHighlight').innerHTML    = '✅ 読み上げ完了';
+      document.getElementById('btnTtsPlay').disabled           = false;
+      document.getElementById('btnTtsPause').disabled          = true;
+      document.getElementById('btnTtsStop').disabled           = true;
+      document.getElementById('btnTtsPause').textContent       = '⏸ 一時停止';
+      ttsPaused = false;
+    };
+
+    ttsUtterance.onerror = (e) => {
+      if (e.error !== 'interrupted')
+        document.getElementById('ttsWordHighlight').innerHTML = `⚠️ エラー: ${e.error}`;
+    };
+
+    speechSynthesis.speak(ttsUtterance);
+    document.getElementById('btnTtsPlay').disabled           = true;
+    document.getElementById('btnTtsPause').disabled          = false;
+    document.getElementById('btnTtsStop').disabled           = false;
+    document.getElementById('ttsProgressFill').style.width   = '0%';
+  }
+
+  function ttsPause() {
+    if (!speechSynthesis.speaking) return;
+    if (speechSynthesis.paused) {
+      speechSynthesis.resume();
+      ttsPaused = false;
+      document.getElementById('btnTtsPause').textContent = '⏸ 一時停止';
+      document.getElementById('btnTtsPlay').disabled     = true;
+    } else {
+      speechSynthesis.pause();
+      ttsPaused = true;
+      document.getElementById('btnTtsPause').textContent = '▶ 再開';
+      document.getElementById('btnTtsPlay').disabled     = false;
+    }
+  }
+
+  function ttsStop() {
+    speechSynthesis.cancel();
+    ttsPaused = false;
+    document.getElementById('btnTtsPlay').disabled          = false;
+    document.getElementById('btnTtsPause').disabled         = true;
+    document.getElementById('btnTtsPause').textContent      = '⏸ 一時停止';
+    document.getElementById('btnTtsStop').disabled          = true;
+    document.getElementById('ttsProgressFill').style.width  = '0%';
+    document.getElementById('ttsWordHighlight').innerHTML   = '⏹ 停止しました';
+  }
+</script>
+</body>
+</html>
